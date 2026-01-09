@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/@prisma/client-profiles"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model UserReference {
+  id        Int      @id // mismo ID que en la DB de users
+  name      String
+  email     String   @unique
+  roleId    Int      @map("role_id")
+  status    String
+  syncedAt  DateTime @default(now()) @map("synced_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  teacherProfile TeacherProfile?
+  studentProfile StudentProfile?
+
+  @@index([roleId])
+  @@map("user_reference")
+}
+
+// Copia local de especialidades
+model SpecialityReference {
+  id          Int              @id // mismo ID que en la DB académica
+  name        String
+  syncedAt    DateTime         @default(now()) @map("synced_at")
+  teachers    TeacherProfile[]
+
+  @@map("speciality_reference")
+}
+
+// Copia local de carreras
+model CareerReference {
+  id            Int              @id // mismo ID que en la DB académica
+  name          String
+  totalCicles   Int              @map("total_cicles")
+  syncedAt      DateTime         @default(now()) @map("synced_at")
+  teachers      TeacherProfile[]
+  students      StudentProfile[]
+
+  @@map("career_reference")
+}
+
+// Copia local de materias
+model SubjectReference {
+  id              Int                 @id // mismo ID que en la DB académica
+  name            String
+  careerId        Int                 @map("career_id")
+  cicleNumber     Int                 @map("cicle_number")
+  syncedAt        DateTime            @default(now()) @map("synced_at")
+  subjectAssignments SubjectAssignment[]
+  studentSubjects StudentSubject[]
+
+  @@index([careerId, cicleNumber])
+  @@map("subject_reference")
+}
+
+model TeacherProfile {
+  id           Int                  @id @default(autoincrement())
+  userId       Int                  @unique @map("user_id")
+  specialityId Int                  @map("speciality_id")
+  careerId     Int                  @map("career_id")
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
+  
+  user         UserReference        @relation(fields: [userId], references: [id])
+  speciality   SpecialityReference  @relation(fields: [specialityId], references: [id])
+  career       CareerReference      @relation(fields: [careerId], references: [id])
+  subjects     SubjectAssignment[]
+
+  @@map("teacher_profile")
+}
+
+model StudentProfile {
+  id              Int              @id @default(autoincrement())
+  userId          Int              @unique @map("user_id")
+  careerId        Int              @map("career_id")
+  currentCicle    Int              @map("current_cicle")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  
+  user            UserReference    @relation(fields: [userId], references: [id])
+  career          CareerReference  @relation(fields: [careerId], references: [id])
+  studentSubjects StudentSubject[]
+
+  @@index([careerId, currentCicle])
+  @@map("student_profile")
+}
+
+// Asignación de materias a profesores
+model SubjectAssignment {
+  id               Int              @id @default(autoincrement())
+  teacherProfileId Int              @map("teacher_profile_id")
+  subjectId        Int              @map("subject_id")
+  assignedAt       DateTime         @default(now()) @map("assigned_at")
+  
+  teacherProfile   TeacherProfile   @relation(fields: [teacherProfileId], references: [id], onDelete: Cascade)
+  subject          SubjectReference @relation(fields: [subjectId], references: [id])
+
+  @@unique([teacherProfileId, subjectId])
+  @@map("subject_assignment")
+}
+
+model StudentSubject {
+  id               Int              @id @default(autoincrement())
+  studentProfileId Int              @map("student_profile_id")
+  subjectId        Int              @map("subject_id")
+  grade            Decimal?         @db.Decimal(5, 2)
+  status           String           @default("enrolled")
+  enrolledAt       DateTime         @default(now()) @map("enrolled_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  
+  studentProfile   StudentProfile   @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  subject          SubjectReference @relation(fields: [subjectId], references: [id])
+
+  @@unique([studentProfileId, subjectId])
+  @@map("student_subject")
+}

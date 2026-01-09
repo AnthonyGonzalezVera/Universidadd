@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../prisma/generated/client-academic"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Speciality {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("speciality")
+}
+
+model Career {
+  id            Int       @id @default(autoincrement())
+  name          String    @unique
+  totalCicles   Int       @map("total_cicles")
+  durationYears Int       @map("duration_years")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  subjects      Subject[]
+
+  @@map("career")
+}
+
+model Subject {
+  id          Int      @id @default(autoincrement())
+  name        String
+  careerId    Int      @map("career_id")
+  cicleNumber Int      @map("cicle_number")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  career      Career   @relation(fields: [careerId], references: [id])
+
+  @@unique([careerId, cicleNumber, name])
+  @@index([careerId, cicleNumber])
+  @@map("subject")
+}

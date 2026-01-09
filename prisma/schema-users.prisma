@@ -1,0 +1,49 @@
+// schema-users.prisma
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/@prisma/client-users"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String @unique // ADMIN, TEACHER, STUDENT
+  users User[]
+
+  @@map("role")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  phone     String?
+  age       Int?
+  roleId    Int      @default(3) @map("role_id") // 3 = STUDENT por defecto
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  role      Role     @relation(fields: [roleId], references: [id])
+
+  @@index([roleId])
+  @@index([email])
+  @@map("user")
+}
+
+// Tabla de sincronización para mantener referencias
+model UserSync {
+  id                Int      @id @default(autoincrement())
+  userId            Int      @unique @map("user_id")
+  roleId            Int      @map("role_id")
+  hasTeacherProfile Boolean  @default(false) @map("has_teacher_profile")
+  hasStudentProfile Boolean  @default(false) @map("has_student_profile")
+  syncedAt          DateTime @default(now()) @map("synced_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("user_sync")
+}
