@@ -198,7 +198,7 @@ export class StudentService {
       return await (this.prisma as any).userReference.findMany({
         where: {
           roleId: 3,
-          status: 'active',
+          status: true,
           studentProfile: {
             careerId: careerId,
             studentSubjects: {
