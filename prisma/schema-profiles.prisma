@@ -52,6 +52,7 @@ model SubjectReference {
   careerId        Int                 @map("career_id")
   cicleNumber     Int                 @map("cicle_number")
   syncedAt        DateTime            @default(now()) @map("synced_at")
+  capacity        Int                 @default(30)
   subjectAssignments SubjectAssignment[]
   studentSubjects StudentSubject[]
 

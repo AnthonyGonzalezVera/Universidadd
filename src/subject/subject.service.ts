@@ -151,4 +151,15 @@ export class SubjectService {
       throw new InternalServerErrorException('Error removing subject');
     }
   }
+
+  async findByCareer(careerId: number) {
+    try {
+      return await this.prisma.subject.findMany({
+        where: { careerId },
+        include: (this as any).subjectIncludes
+      });
+    } catch (error) {
+      throw new InternalServerErrorException('Error fetching subjects by career');
+    }
+  }
 }

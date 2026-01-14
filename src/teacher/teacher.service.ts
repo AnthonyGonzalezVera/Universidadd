@@ -167,4 +167,76 @@ export class TeacherService {
       throw new InternalServerErrorException('Error removing teacher');
     }
   }
+
+  async findTeachersWithMultipleSubjects() {
+    try {
+      const teachers = await (this.prisma as any).userReference.findMany({
+        where: {
+          roleId: 2,
+          teacherProfile: {
+            subjects: {
+              some: {}
+            }
+          }
+        },
+        include: {
+          teacherProfile: {
+            include: {
+              _count: {
+                select: { subjects: true }
+              },
+              subjects: true
+            }
+          }
+        }
+      });
+
+      return teachers.filter(t => (t.teacherProfile?._count.subjects || 0) > 1);
+    } catch (error) {
+      throw new InternalServerErrorException('Error fetching teachers with multiple subjects');
+    }
+  }
+
+  async filterTeachersByStatusAndSubjects() {
+    try {
+      // Lógica solicitada: (full-time AND teach subjects) OR NOT inactive
+      // Como no hay campo "full-time", usaremos un placeholder o verificaremos el status.
+      // Prisma no tiene "NOT inactive" directamente si no sabemos qué estados existen aparte de 'active'.
+      // Usaremos status: { not: 'inactive' }
+
+      return await (this.prisma as any).userReference.findMany({
+        where: {
+          roleId: 2,
+          OR: [
+            {
+              AND: [
+                { status: 'active' }, // Asumimos active como placeholder para full-time o similar
+                {
+                  teacherProfile: {
+                    subjects: { some: {} }
+                  }
+                }
+              ]
+            },
+            {
+              status: { not: 'inactive' }
+            }
+          ]
+        },
+        include: {
+          teacherProfile: {
+            include: {
+              subjects: {
+                include: {
+                  subject: true
+                }
+              }
+            }
+          }
+        }
+      });
+    } catch (error) {
+      throw new InternalServerErrorException('Error filtering teachers by status and subjects');
+    }
+  }
 }

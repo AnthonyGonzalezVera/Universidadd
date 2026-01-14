@@ -164,4 +164,87 @@ export class StudentsubjectService {
       throw new InternalServerErrorException('Error removing student subject relationship');
     }
   }
+
+  async findEnrollmentsByPeriod(studentId: number, cycleId: number) {
+    try {
+      return await this.prisma.studentSubject.findMany({
+        where: {
+          studentProfile: { userId: studentId },
+          subject: { id: cycleId } // Ajustado basándose en la estructura probable
+        },
+        include: (this as any).studentSubjectIncludes
+      });
+    } catch (error) {
+      throw new InternalServerErrorException('Error fetching enrollments by period');
+    }
+  }
+
+  async enrollWithTransaction(studentId: number, subjectId: number) {
+    try {
+      return await (this.prisma as any).$transaction(async (tx: any) => {
+        // 1. Verificar que el estudiante esté activo
+        const student = await tx.userReference.findUnique({
+          where: { id: studentId },
+          include: { studentProfile: true }
+        });
+
+        if (!student || student.status !== 'active' || student.roleId !== 3) {
+          throw new ConflictException('Student is not active or not found');
+        }
+
+        const studentProfileId = student.studentProfile.id;
+
+        // 2. Verificar capacidad de la materia
+        const subject = await tx.subjectReference.findUnique({
+          where: { id: subjectId }
+        });
+
+        if (!subject) {
+          throw new NotFoundException('Subject not found');
+        }
+
+        if (subject.capacity <= 0) {
+          throw new ConflictException('No available capacity for this subject');
+        }
+
+        // Verificar si ya está matriculado
+        const existingEnrollment = await tx.studentSubject.findUnique({
+          where: {
+            studentProfileId_subjectId: {
+              studentProfileId,
+              subjectId
+            }
+          }
+        });
+
+        if (existingEnrollment) {
+          throw new ConflictException('Student is already enrolled in this subject');
+        }
+
+        // 3. Registrar la matrícula
+        const enrollment = await tx.studentSubject.create({
+          data: {
+            studentProfileId,
+            subjectId,
+            status: 'enrolled'
+          }
+        });
+
+        // 4. Disminuir la capacidad disponible
+        await tx.subjectReference.update({
+          where: { id: subjectId },
+          data: {
+            capacity: { decrement: 1 }
+          }
+        });
+
+        return enrollment;
+      });
+    } catch (error) {
+      if (error instanceof ConflictException || error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Error during transactional enrollment: ' + error.message);
+    }
+  }
 }

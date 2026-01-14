@@ -53,6 +53,7 @@ model Subject {
   cycleId     Int?     @map("cycle_id") // Referencia al ciclo académico
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
+  capacity      Int       @default(30)
   career      Career   @relation(fields: [careerId], references: [id])
   cycle       Cycle?   @relation(fields: [cycleId], references: [id])
 

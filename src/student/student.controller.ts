@@ -9,6 +9,18 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 export class StudentController {
   constructor(private readonly studentService: StudentService) { }
 
+  @ApiOperation({ summary: 'Get student subject summary (Native SQL)' })
+  @Get('summary')
+  getSummary() {
+    return this.studentService.findStudentSubjectSummaryRaw();
+  }
+
+  @ApiOperation({ summary: 'List all active students with their career' })
+  @Get('active-with-career')
+  findActiveWithCareer() {
+    return this.studentService.findActiveStudentsWithCareer();
+  }
+
   @ApiOperation({ summary: 'Get all students' })
   @Get()
   findAll(@Query() findWithPagination: PaginationDto) {

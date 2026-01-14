@@ -173,5 +173,81 @@ export class StudentService {
     }
   }
 
-}
+  async findActiveStudentsWithCareer() {
+    try {
+      return await (this.prisma as any).userReference.findMany({
+        where: {
+          roleId: 3,
+          status: 'active'
+        },
+        include: {
+          studentProfile: {
+            include: {
+              career: true
+            }
+          }
+        }
+      });
+    } catch (error) {
+      throw new InternalServerErrorException('Error fetching active students with career');
+    }
+  }
 
+  async findActiveStudentsByCareerAndPeriod(careerId: number, cycleId: number) {
+    try {
+      return await (this.prisma as any).userReference.findMany({
+        where: {
+          roleId: 3,
+          status: 'active',
+          studentProfile: {
+            careerId: careerId,
+            studentSubjects: {
+              some: {
+                subject: { cycleId: cycleId }
+              }
+            }
+          }
+        },
+        include: {
+          studentProfile: {
+            include: {
+              career: true,
+              studentSubjects: {
+                where: {
+                  subject: { cycleId: cycleId }
+                },
+                include: {
+                  subject: true
+                }
+              }
+            }
+          }
+        }
+      });
+    } catch (error) {
+      throw new InternalServerErrorException('Error filtering students by career and period');
+    }
+  }
+
+  async findStudentSubjectSummaryRaw() {
+    try {
+      // Usando $queryRaw para la Parte 3
+      // Nota: Los nombres de tablas en Raw SQL deben coincidir con @@map del esquema Prisma
+      return await (this.prisma as any).$queryRaw`
+        SELECT 
+          u.name as student_name,
+          c.name as career_name,
+          COUNT(ss.id)::int as total_subjects
+        FROM "user" u
+        JOIN "student_profile" sp ON u.id = sp.user_id
+        JOIN "career_reference" c ON sp.career_id = c.id
+        LEFT JOIN "student_subject" ss ON sp.id = ss.student_profile_id
+        GROUP BY u.name, c.name
+        ORDER BY total_subjects DESC
+      `;
+    } catch (error) {
+      console.error(error);
+      throw new InternalServerErrorException('Error executing raw SQL query for student summary');
+    }
+  }
+}
